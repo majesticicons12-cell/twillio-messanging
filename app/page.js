@@ -43,6 +43,10 @@ export default function Dashboard() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [compose, setCompose] = useState("");
+  const [channel, setChannel] = useState("sms");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -61,6 +65,27 @@ export default function Dashboard() {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendMessage() {
+    if (!compose.trim() || !selected) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: selected, body: compose.trim(), channel }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCompose("");
+      await load();
+    } catch (e) {
+      setSendError(e.message);
+    } finally {
+      setSending(false);
     }
   }
 
@@ -217,37 +242,120 @@ export default function Dashboard() {
             })}
           </div>
 
-          <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-            {activeThread ? (
-              <>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--paper-dim)", marginBottom: 16 }}>
-                  {activeThread.number}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {activeThread.messages.map((m) => {
-                    const out = m.direction.startsWith("outbound");
-                    return (
-                      <div
-                        key={m.sid}
-                        style={{
-                          alignSelf: out ? "flex-end" : "flex-start",
-                          maxWidth: "70%",
-                          background: out ? "var(--signal-dim)" : "var(--ink-raised)",
-                          borderRadius: 10,
-                          padding: "10px 14px",
-                        }}
-                      >
-                        <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{m.body}</div>
-                        <div style={{ fontSize: 10, color: "var(--paper-dim)", marginTop: 6, fontFamily: "var(--mono)" }}>
-                          {formatTime(m.dateSent)} · {m.status}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+              {activeThread ? (
+                <>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--paper-dim)", marginBottom: 16 }}>
+                    {activeThread.number}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {activeThread.messages.map((m) => {
+                      const out = m.direction.startsWith("outbound");
+                      return (
+                        <div
+                          key={m.sid}
+                          style={{
+                            alignSelf: out ? "flex-end" : "flex-start",
+                            maxWidth: "70%",
+                            background: out ? "var(--signal-dim)" : "var(--ink-raised)",
+                            borderRadius: 10,
+                            padding: "10px 14px",
+                          }}
+                        >
+                          <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{m.body}</div>
+                          <div style={{ fontSize: 10, color: "var(--paper-dim)", marginTop: 6, fontFamily: "var(--mono)" }}>
+                            {formatTime(m.dateSent)} · {m.status}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: "var(--paper-dim)" }}>Select a conversation</div>
+              )}
+            </div>
+
+            {activeThread && (
+              <div style={{ borderTop: "1px solid var(--ink-line)", padding: "12px 16px" }}>
+                {sendError && (
+                  <div style={{ marginBottom: 8, fontSize: 12, color: "var(--danger)", fontFamily: "var(--mono)" }}>
+                    {sendError}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button
+                      onClick={() => setChannel("sms")}
+                      style={{
+                        background: channel === "sms" ? "var(--signal-dim)" : "none",
+                        border: "1px solid var(--ink-line)",
+                        color: channel === "sms" ? "var(--paper)" : "var(--paper-dim)",
+                        borderRadius: 6,
+                        padding: "6px 10px",
+                        fontSize: 11,
+                        fontFamily: "var(--mono)",
+                        fontWeight: channel === "sms" ? 600 : 400,
+                      }}
+                    >
+                      SMS
+                    </button>
+                    <button
+                      onClick={() => setChannel("whatsapp")}
+                      style={{
+                        background: channel === "whatsapp" ? "var(--signal-dim)" : "none",
+                        border: "1px solid var(--ink-line)",
+                        color: channel === "whatsapp" ? "var(--paper)" : "var(--paper-dim)",
+                        borderRadius: 6,
+                        padding: "6px 10px",
+                        fontSize: 11,
+                        fontFamily: "var(--mono)",
+                        fontWeight: channel === "whatsapp" ? 600 : 400,
+                      }}
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={compose}
+                    onChange={(e) => setCompose(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Type a message..."
+                    disabled={sending}
+                    style={{
+                      flex: 1,
+                      background: "var(--ink-raised)",
+                      border: "1px solid var(--ink-line)",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      color: "var(--paper)",
+                      fontSize: 14,
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={sending || !compose.trim()}
+                    style={{
+                      background: "var(--signal)",
+                      color: "var(--ink)",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px 18px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: "var(--mono)",
+                      cursor: sending || !compose.trim() ? "not-allowed" : "pointer",
+                      opacity: sending || !compose.trim() ? 0.5 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {sending ? "Sending…" : "Send"}
+                  </button>
                 </div>
-              </>
-            ) : (
-              <div style={{ color: "var(--paper-dim)" }}>Select a conversation</div>
+              </div>
             )}
           </div>
         </div>
