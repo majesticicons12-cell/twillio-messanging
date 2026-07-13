@@ -74,18 +74,37 @@ export default function Dashboard() {
     if (!compose.trim() || !selected) return;
     setSending(true);
     setSendError(null);
+    const msg = compose.trim();
+    setCompose("");
     try {
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: selected, body: compose.trim(), channel }),
+        body: JSON.stringify({ to: selected, body: msg, channel }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setCompose("");
-      await load();
+      const outgoing = {
+        sid: data.sid,
+        body: msg,
+        direction: "outbound-api",
+        status: data.status,
+        dateSent: new Date().toISOString(),
+      };
+      setThreads((prev) => {
+        const exists = prev.find((t) => t.number === selected);
+        if (exists) {
+          return prev.map((t) =>
+            t.number === selected
+              ? { ...t, messages: [...t.messages, outgoing] }
+              : t
+          );
+        }
+        return [...prev, { number: selected, messages: [outgoing] }];
+      });
     } catch (e) {
       setSendError(e.message);
+      setCompose(msg);
     } finally {
       setSending(false);
     }
