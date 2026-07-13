@@ -47,6 +47,8 @@ export default function Dashboard() {
   const [channel, setChannel] = useState("sms");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
+  const [showAddNumber, setShowAddNumber] = useState(false);
+  const [newNumber, setNewNumber] = useState("");
 
   async function load() {
     setLoading(true);
@@ -87,6 +89,17 @@ export default function Dashboard() {
     } finally {
       setSending(false);
     }
+  }
+
+  function addNumber() {
+    const num = newNumber.trim();
+    if (!num) return;
+    if (!threads.find((t) => t.number === num)) {
+      setThreads((prev) => [...prev, { number: num, messages: [] }]);
+    }
+    setSelected(num);
+    setNewNumber("");
+    setShowAddNumber(false);
   }
 
   useEffect(() => {
@@ -195,89 +208,172 @@ export default function Dashboard() {
               borderRight: "1px solid var(--ink-line)",
               overflowY: "auto",
               flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            {threads.length === 0 && !loading && (
-              <div style={{ padding: 24, color: "var(--paper-dim)", fontSize: 13 }}>
-                No messages yet. Once someone texts your Twilio number, the thread shows up here.
-              </div>
-            )}
-            {threads.map((t) => {
-              const last = t.messages[t.messages.length - 1];
-              return (
-                <button
-                  key={t.number}
-                  onClick={() => setSelected(t.number)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    background: selected === t.number ? "var(--ink-raised)" : "transparent",
-                    border: "none",
-                    borderBottom: "1px solid var(--ink-line)",
-                    padding: "14px 20px",
-                    color: "var(--paper)",
-                  }}
-                >
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 13, marginBottom: 4 }}>
-                    {t.number}
-                  </div>
-                  <div
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--ink-line)" }}>
+              {showAddNumber ? (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    type="text"
+                    value={newNumber}
+                    onChange={(e) => setNewNumber(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addNumber(); if (e.key === "Escape") { setShowAddNumber(false); setNewNumber(""); } }}
+                    placeholder="+91xxxxxxxxxx"
+                    autoFocus
                     style={{
-                      fontSize: 13,
-                      color: "var(--paper-dim)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      flex: 1,
+                      background: "var(--ink-raised)",
+                      border: "1px solid var(--ink-line)",
+                      borderRadius: 6,
+                      padding: "6px 10px",
+                      color: "var(--paper)",
+                      fontSize: 12,
+                      fontFamily: "var(--mono)",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={addNumber}
+                    style={{
+                      background: "var(--signal)",
+                      color: "var(--ink)",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      fontFamily: "var(--mono)",
+                      cursor: "pointer",
                     }}
                   >
-                    {last?.direction?.startsWith("outbound") ? "You: " : ""}
-                    {last?.body}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--paper-dim)", marginTop: 4, fontFamily: "var(--mono)" }}>
-                    {formatTime(last?.dateSent)}
-                  </div>
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setShowAddNumber(false); setNewNumber(""); }}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--ink-line)",
+                      color: "var(--paper-dim)",
+                      borderRadius: 6,
+                      padding: "6px 8px",
+                      fontSize: 11,
+                      fontFamily: "var(--mono)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAddNumber(true)}
+                  style={{
+                    width: "100%",
+                    background: "none",
+                    border: "1px dashed var(--ink-line)",
+                    color: "var(--paper-dim)",
+                    borderRadius: 6,
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    fontFamily: "var(--mono)",
+                    cursor: "pointer",
+                  }}
+                >
+                  + New Number
                 </button>
-              );
-            })}
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {threads.length === 0 && !loading && (
+                <div style={{ padding: 24, color: "var(--paper-dim)", fontSize: 13 }}>
+                  No messages yet. Click "+ New Number" to start a conversation.
+                </div>
+              )}
+              {threads.map((t) => {
+                const last = t.messages[t.messages.length - 1];
+                return (
+                  <button
+                    key={t.number}
+                    onClick={() => setSelected(t.number)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      background: selected === t.number ? "var(--ink-raised)" : "transparent",
+                      border: "none",
+                      borderBottom: "1px solid var(--ink-line)",
+                      padding: "14px 20px",
+                      color: "var(--paper)",
+                    }}
+                  >
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 13, marginBottom: 4 }}>
+                      {t.number}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--paper-dim)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {last?.direction?.startsWith("outbound") ? "You: " : ""}
+                      {last?.body || "No messages yet"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--paper-dim)", marginTop: 4, fontFamily: "var(--mono)" }}>
+                      {last ? formatTime(last?.dateSent) : ""}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-              {activeThread ? (
+              {selected ? (
                 <>
                   <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--paper-dim)", marginBottom: 16 }}>
-                    {activeThread.number}
+                    {selected}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {activeThread.messages.map((m) => {
-                      const out = m.direction.startsWith("outbound");
-                      return (
-                        <div
-                          key={m.sid}
-                          style={{
-                            alignSelf: out ? "flex-end" : "flex-start",
-                            maxWidth: "70%",
-                            background: out ? "var(--signal-dim)" : "var(--ink-raised)",
-                            borderRadius: 10,
-                            padding: "10px 14px",
-                          }}
-                        >
-                          <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{m.body}</div>
-                          <div style={{ fontSize: 10, color: "var(--paper-dim)", marginTop: 6, fontFamily: "var(--mono)" }}>
-                            {formatTime(m.dateSent)} · {m.status}
+                  {activeThread?.messages.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {activeThread.messages.map((m) => {
+                        const out = m.direction.startsWith("outbound");
+                        return (
+                          <div
+                            key={m.sid}
+                            style={{
+                              alignSelf: out ? "flex-end" : "flex-start",
+                              maxWidth: "70%",
+                              background: out ? "var(--signal-dim)" : "var(--ink-raised)",
+                              borderRadius: 10,
+                              padding: "10px 14px",
+                            }}
+                          >
+                            <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{m.body}</div>
+                            <div style={{ fontSize: 10, color: "var(--paper-dim)", marginTop: 6, fontFamily: "var(--mono)" }}>
+                              {formatTime(m.dateSent)} · {m.status}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--paper-dim)", fontSize: 13 }}>
+                      No messages yet. Send one below to start the conversation.
+                    </div>
+                  )}
                 </>
               ) : (
-                <div style={{ color: "var(--paper-dim)" }}>Select a conversation</div>
+                <div style={{ color: "var(--paper-dim)" }}>Select a conversation or add a new number</div>
               )}
             </div>
 
-            {activeThread && (
+            {selected && (
               <div style={{ borderTop: "1px solid var(--ink-line)", padding: "12px 16px" }}>
                 {sendError && (
                   <div style={{ marginBottom: 8, fontSize: 12, color: "var(--danger)", fontFamily: "var(--mono)" }}>
