@@ -1,0 +1,53 @@
+:root {
+  --ink: #0c1016;
+  --ink-raised: #131924;
+  --ink-line: #232b3a;
+  --paper: #e9edf2;
+  --paper-dim: #9aa5b5;
+  --signal: #f0a94e;
+  --signal-dim: #7a5a2a;
+  --wave: #7f8ce0;
+  --danger: #e0656a;
+  --ok: #56b88a;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --sans: "Inter", -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--signal-dim);
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
